@@ -1,2 +1,1 @@
-"""Aureview AI backend package."""
 
