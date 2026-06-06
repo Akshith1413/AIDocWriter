@@ -17,6 +17,12 @@ def review_from_json(raw: str) -> ReviewResult:
 
 
 def document_view(document: Document) -> DocumentView:
+    custom_sections = None
+    if document.custom_sections:
+        try:
+            custom_sections = json.loads(document.custom_sections)
+        except Exception:
+            pass
     return DocumentView(
         id=document.id,
         title=document.title,
@@ -30,5 +36,7 @@ def document_view(document: Document) -> DocumentView:
         iteration_count=document.iteration_count,
         created_at=document.created_at,
         updated_at=document.updated_at,
+        custom_template_label=document.custom_template_label,
+        custom_sections=custom_sections,
     )
 

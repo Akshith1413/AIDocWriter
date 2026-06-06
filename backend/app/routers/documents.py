@@ -37,6 +37,7 @@ async def generate_document(
     db: Session = Depends(get_db),
 ) -> DocumentView:
     from ..llm import ProviderError
+    import json
     
     document_id = str(uuid.uuid4())
     try:
@@ -55,6 +56,8 @@ async def generate_document(
         model=result.model,
         status=result.status,
         iteration_count=result.iteration_count,
+        custom_template_label=payload.custom_template_label,
+        custom_sections=json.dumps(payload.custom_sections) if payload.custom_sections else None,
     )
     db.add(document)
     db.commit()
@@ -128,12 +131,23 @@ async def review_document(
 ) -> DocumentView:
     document = owned_document(document_id, user, db)
     from ..llm import ProviderError
+    import json
+    
+    custom_sections_list = None
+    if document.custom_sections:
+        try:
+            custom_sections_list = json.loads(document.custom_sections)
+        except Exception:
+            pass
+
     request = GenerateRequest(
         title=document.title,
         input_text=document.source_notes,
         template=document.template,
         provider=document.provider,
         model=document.model,
+        custom_template_label=document.custom_template_label,
+        custom_sections=custom_sections_list,
     )
     orchestrator = DocumentOrchestrator(request, thread_id=document.id)
     try:
@@ -141,7 +155,7 @@ async def review_document(
             result = await orchestrator.review_existing(document.title, document.content_md)
         else:
             review = await orchestrator.client.review(
-                get_template(document.template),
+                get_template(document.template, document.custom_template_label, custom_sections_list),
                 document.source_notes,
                 document.content_md,
             )
@@ -171,13 +185,23 @@ async def approve_document(
 ) -> DocumentView:
     document = owned_document(document_id, user, db)
     from ..llm import ProviderError
+    import json
     
+    custom_sections_list = None
+    if document.custom_sections:
+        try:
+            custom_sections_list = json.loads(document.custom_sections)
+        except Exception:
+            pass
+
     request = GenerateRequest(
         title=document.title,
         input_text=document.source_notes,
         template=document.template,
         provider=document.provider,
         model=document.model,
+        custom_template_label=document.custom_template_label,
+        custom_sections=custom_sections_list,
     )
     orchestrator = DocumentOrchestrator(request, thread_id=document.id)
     try:

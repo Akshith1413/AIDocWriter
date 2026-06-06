@@ -94,7 +94,9 @@ export function DocumentPage() {
     <div className="document-workspace">
       <header className="workspace-header">
         <div>
-          <span className="eyebrow">{document.template} / {document.provider}</span>
+          <span className="eyebrow">
+            {document.custom_template_label || document.template} / {document.provider}
+          </span>
           <h1>{document.title}</h1>
         </div>
         <div className="workspace-actions">

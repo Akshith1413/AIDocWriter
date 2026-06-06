@@ -46,7 +46,9 @@ export function DashboardPage() {
           <div className="document-list">
             {summary.recent_documents.map((document) => (
               <Link className="document-row" key={document.id} to={`/app/documents/${document.id}`}>
-                <div className="document-type">{document.template}</div>
+                <div className="document-type">
+                  {document.custom_template_label || document.template}
+                </div>
                 <div className="document-name">
                   <strong>{document.title}</strong>
                   <small>Updated {new Date(document.updated_at).toLocaleString()}</small>

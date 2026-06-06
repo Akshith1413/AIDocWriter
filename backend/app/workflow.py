@@ -22,13 +22,20 @@ class WorkflowState(TypedDict, total=False):
     draft: str
     review: ReviewResult
     stages: list[str]
+    custom_template_label: str | None
+    custom_sections: list[str] | None
 
 
 def inferred_title(request: GenerateRequest) -> str:
     if request.title and request.title.strip():
         return request.title.strip()
     first_line = request.input_text.strip().splitlines()[0].lstrip("-#* ").strip()
-    return (first_line[:85] or f"New {get_template(request.template).label}").rstrip(".")
+    template_obj = get_template(
+        request.template,
+        request.custom_template_label,
+        request.custom_sections,
+    )
+    return (first_line[:85] or f"New {template_obj.label}").rstrip(".")
 
 
 class DocumentOrchestrator:
@@ -68,7 +75,11 @@ class DocumentOrchestrator:
         previous_review = state.get("review")
         feedback = previous_review.model_dump_json(indent=2) if previous_review else ""
         draft = await self.client.draft(
-            get_template(state["template"]),
+            get_template(
+                state["template"],
+                state.get("custom_template_label"),
+                state.get("custom_sections"),
+            ),
             state["title"],
             state["input_text"],
             iteration,
@@ -80,7 +91,13 @@ class DocumentOrchestrator:
 
     async def _critic(self, state: WorkflowState) -> WorkflowState:
         review = await self.client.review(
-            get_template(state["template"]), state["input_text"], state["draft"]
+            get_template(
+                state["template"],
+                state.get("custom_template_label"),
+                state.get("custom_sections"),
+            ),
+            state["input_text"],
+            state["draft"],
         )
         stages = [
             *state.get("stages", []),
@@ -113,6 +130,8 @@ class DocumentOrchestrator:
             "max_iterations": self.request.max_iterations,
             "iterations": 0,
             "stages": ["Input accepted and template rubric loaded"],
+            "custom_template_label": self.request.custom_template_label,
+            "custom_sections": self.request.custom_sections,
         }
 
     async def generate(self) -> GenerationResult:

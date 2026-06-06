@@ -39,6 +39,8 @@ class Document(Base):
     model: Mapped[str] = mapped_column(String(120), default="studio-demo")
     status: Mapped[str] = mapped_column(String(30), default="approved")
     iteration_count: Mapped[int] = mapped_column(Integer, default=1)
+    custom_template_label: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    custom_sections: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow

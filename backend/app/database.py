@@ -21,8 +21,17 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db() -> None:
     from . import models  # noqa: F401
+    from sqlalchemy import text
 
     Base.metadata.create_all(bind=engine)
+
+    # Ensure dynamic columns exist for existing databases
+    with engine.begin() as conn:
+        for column_name, column_type in [("custom_template_label", "VARCHAR(120)"), ("custom_sections", "TEXT")]:
+            try:
+                conn.execute(text(f"ALTER TABLE documents ADD COLUMN {column_name} {column_type}"))
+            except Exception:
+                pass
 
 
 def get_db() -> Generator[Session, None, None]:

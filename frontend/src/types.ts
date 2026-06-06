@@ -1,4 +1,4 @@
-export type TemplateId = "prd" | "compliance" | "contract" | "consulting";
+export type TemplateId = "prd" | "compliance" | "contract" | "consulting" | "other";
 export type ProviderId = "demo" | "openai" | "anthropic" | "groq" | "groq-8b" | "groq-gemma";
 
 export interface ReviewFinding {
@@ -24,6 +24,8 @@ export interface GeneratePayload {
   provider: ProviderId;
   model?: string;
   max_iterations?: number;
+  custom_template_label?: string;
+  custom_sections?: string[];
 }
 
 export interface GenerationResult {
@@ -51,6 +53,8 @@ export interface DocumentRecord {
   iteration_count: number;
   created_at: string;
   updated_at: string;
+  custom_template_label?: string;
+  custom_sections?: string[];
 }
 
 export interface User {

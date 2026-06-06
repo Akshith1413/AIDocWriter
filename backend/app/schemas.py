@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, EmailStr, Field
 
 
-TemplateName = Literal["prd", "compliance", "contract", "consulting"]
+TemplateName = Literal["prd", "compliance", "contract", "consulting", "other"]
 ProviderName = Literal["demo", "openai", "anthropic", "groq", "groq-8b", "groq-gemma", "xai"]
 
 
@@ -41,6 +41,8 @@ class GenerateRequest(BaseModel):
     provider: ProviderName = "demo"
     model: str | None = Field(default=None, max_length=120)
     max_iterations: int = Field(default=3, ge=1, le=4)
+    custom_template_label: str | None = Field(default=None, max_length=120)
+    custom_sections: list[str] | None = Field(default=None)
 
 
 class ReviewFinding(BaseModel):
@@ -77,6 +79,8 @@ class DocumentView(BaseModel):
     iteration_count: int
     created_at: datetime
     updated_at: datetime
+    custom_template_label: str | None = None
+    custom_sections: list[str] | None = None
 
 
 class GenerationResult(BaseModel):

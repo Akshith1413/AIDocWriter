@@ -9,6 +9,7 @@ const samples: Record<TemplateId, string> = {
   compliance: "Quarterly vendor access review for customer data systems. Evidence includes access export and manager attestations. Two expired contractor accounts appeared active. Need remediation owners and approval record.",
   contract: "Review a proposed SaaS vendor agreement for analytics tooling. Annual value $85,000, handles customer usage data, auto-renews yearly, and vendor requests unlimited liability exclusions.",
   consulting: "A regional advisory team has slow proposal turnaround and inconsistent quality checks. Leadership wants a 60-day pilot for assisted drafting with clear ROI and adoption measures.",
+  other: "Provide your source notes or meeting transcripts here. The Writer Agent will organize them and draft a document with the custom sections specified above.",
 };
 
 const fallbackTemplates: TemplateOption[] = [
@@ -16,6 +17,7 @@ const fallbackTemplates: TemplateOption[] = [
   { id: "compliance", name: "Compliance Review Memo", sections: [] },
   { id: "contract", name: "Contract Review Brief", sections: [] },
   { id: "consulting", name: "Consulting Decision Memo", sections: [] },
+  { id: "other", name: "Custom Document", sections: [] },
 ];
 
 interface Props {
@@ -32,6 +34,8 @@ export function GenerationComposer({ onGenerate, busy, compact = false }: Props)
   const [model, setModel] = useState("llama-3.3-70b-versatile");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState(samples.prd);
+  const [customLabel, setCustomLabel] = useState("Custom Document");
+  const [customSectionsText, setCustomSectionsText] = useState("Executive Summary, Overview, Details, Risks and Next Steps");
 
   useEffect(() => {
     Promise.all([api.templates(), api.providers()]).then(([nextTemplates, nextProviders]) => {
@@ -53,14 +57,22 @@ export function GenerationComposer({ onGenerate, busy, compact = false }: Props)
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    await onGenerate({
+    const payload: GeneratePayload = {
       title: title || undefined,
       input_text: notes,
       template,
       provider,
       model,
       max_iterations: 3,
-    });
+    };
+    if (template === "other") {
+      payload.custom_template_label = customLabel;
+      payload.custom_sections = customSectionsText
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    await onGenerate(payload);
   }
 
   return (
@@ -78,10 +90,32 @@ export function GenerationComposer({ onGenerate, busy, compact = false }: Props)
             type="button"
           >
             <FileText size={15} />
-            {entry.name.replace(" Document", "").replace(" Review", "")}
+            {entry.id === "other" ? "Other / Custom" : entry.name.replace(" Document", "").replace(" Review", "")}
           </button>
         ))}
       </div>
+      {template === "other" && (
+        <div className="model-grid">
+          <label className="field">
+            <span>Custom document type name</span>
+            <input
+              required
+              value={customLabel}
+              onChange={(event) => setCustomLabel(event.target.value)}
+              placeholder="e.g., Security Audit Report"
+            />
+          </label>
+          <label className="field">
+            <span>Required sections (comma-separated)</span>
+            <input
+              required
+              value={customSectionsText}
+              onChange={(event) => setCustomSectionsText(event.target.value)}
+              placeholder="e.g., Executive Summary, Findings, Remediation"
+            />
+          </label>
+        </div>
+      )}
       <label className="field">
         <span>Optional document title</span>
         <input

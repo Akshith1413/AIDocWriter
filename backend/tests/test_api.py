@@ -54,7 +54,7 @@ def test_health_and_public_configuration() -> None:
         providers = client.get("/api/public/providers").json()
         assert providers[0]["id"] == "demo"
         assert providers[0]["configured"] is True
-        assert len(client.get("/api/public/templates").json()) == 4
+        assert len(client.get("/api/public/templates").json()) == 5
         orchestration = DocumentOrchestrator(GenerateRequest(**sample_request(provider="openai", model=None)))
         assert orchestration.client.selection.model == "gpt-4o"
 

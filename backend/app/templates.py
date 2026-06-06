@@ -72,8 +72,36 @@ TEMPLATES: dict[str, DocumentTemplate] = {
         ),
         instruction="Write an executive-ready decision memo with practical recommendations.",
     ),
+    "other": DocumentTemplate(
+        name="other",
+        label="Custom Document",
+        required_sections=(
+            "Executive Summary",
+            "Overview",
+            "Details",
+            "Risks and Next Steps",
+        ),
+        instruction="Write a high-quality document matching the custom specification.",
+    ),
 }
 
 
-def get_template(name: str) -> DocumentTemplate:
+def get_template(
+    name: str,
+    custom_label: str | None = None,
+    custom_sections: tuple[str, ...] | list[str] | None = None,
+) -> DocumentTemplate:
+    if name == "other":
+        sections = tuple(custom_sections) if custom_sections else (
+            "Executive Summary",
+            "Overview",
+            "Details",
+            "Risks and Next Steps",
+        )
+        return DocumentTemplate(
+            name="other",
+            label=custom_label or "Custom Document",
+            required_sections=sections,
+            instruction=f"Write a high-quality {custom_label or 'document'} with the specified sections.",
+        )
     return TEMPLATES.get(name, TEMPLATES["prd"])
