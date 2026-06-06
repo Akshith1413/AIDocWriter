@@ -1,0 +1,75 @@
+Run the CLI tool directly (Terminal workflow)
+You can also run the CLI commands from the virtual environment:
+
+powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+aureview generate "Build a customer onboarding portal with document verification..." --template prd --output onboarding-prd.md
+
+
+
+
+
+Commands to Run the Application
+Here are the commands to start each service:
+
+1. Start the Backend API
+Open a terminal (e.g. PowerShell) in the project root and run:
+
+powershell
+cd backend
+# Activate virtual environment
+.\.venv\Scripts\Activate.ps1
+# Start the FastAPI application
+python -m uvicorn app.main:app --reload --port 8000
+The API documentation will then be available at http://localhost:8000/docs.
+
+2. Start the Frontend Web Application
+Open another terminal in the project root and run:
+
+powershell
+cd frontend
+# Run via cmd if PowerShell script execution policy prevents running npm scripts directly
+cmd /c npm run dev
+The web app will run at http://localhost:5173.
+
+
+
+
+deployment:
+
+Step 1: Set up a Database on Render (to store documents persistently)
+Go to Render Dashboard and click New -> PostgreSQL.
+Give it a name (e.g. aureview-db) and click Create Database.
+Once created, copy the Internal Database URL.
+Step 2: Deploy the Backend API on Render
+Click New -> Web Service on Render.
+Connect your Git repository.
+Configure the settings:
+Root Directory: backend
+Language: Python
+Build Command: pip install .
+Start Command: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+Under Environment Variables, click Add and add:
+DATABASE_URL: [Paste your PostgreSQL URL]
+GROQ_API_KEY: your-groq-api-key-here
+DEFAULT_PROVIDER: groq
+DEFAULT_MODEL: llama-3.3-70b-versatile
+SECRET_KEY: [Generate any random 32-character string]
+CORS_ORIGINS: https://your-frontend.vercel.app (we will replace this with your Vercel URL in step 4).
+Click Create Web Service. Keep a copy of the URL Render generates for your backend (e.g., https://aureview-backend.onrender.com).
+Step 3: Deploy the Frontend on Vercel
+Go to Vercel and click Add New -> Project.
+Import your Git repository.
+Configure settings:
+Root Directory: frontend
+Framework Preset: Vite
+Open the Environment Variables section and add:
+Key: VITE_API_URL
+Value: https://YOUR-RENDER-BACKEND-URL.onrender.com/api (Remember to append /api at the end).
+Click Deploy. Vercel will build your React application and give you a frontend URL (e.g., https://aureview-frontend.vercel.app).
+Step 4: Authorize Vercel on the Backend (CORS)
+Go back to your Backend Web Service on Render.
+Navigate to Environment.
+Change the CORS_ORIGINS value from the placeholder to your actual Vercel frontend URL (e.g., https://aureview-frontend.vercel.app).
+Save the changes. Render will automatically redeploy the backend with the correct permissions.

@@ -1,5 +1,6 @@
 import io
 import json
+import uuid
 from html import escape
 
 import bleach
@@ -36,11 +37,14 @@ async def generate_document(
     db: Session = Depends(get_db),
 ) -> DocumentView:
     from ..llm import ProviderError
+    
+    document_id = str(uuid.uuid4())
     try:
-        result = await DocumentOrchestrator(payload).generate()
+        result = await DocumentOrchestrator(payload, thread_id=document_id).generate()
     except ProviderError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     document = Document(
+        id=document_id,
         user_id=user.id,
         title=result.title,
         template=payload.template,
@@ -131,17 +135,17 @@ async def review_document(
         provider=document.provider,
         model=document.model,
     )
-    orchestrator = DocumentOrchestrator(request)
+    orchestrator = DocumentOrchestrator(request, thread_id=document.id)
     try:
         if auto_refine:
-            result = await orchestrator.review_existing(document.title, payload.draft)
+            result = await orchestrator.review_existing(document.title, document.content_md)
         else:
             review = await orchestrator.client.review(
                 get_template(document.template),
                 document.source_notes,
-                payload.draft,
+                document.content_md,
             )
-            document.content_md = payload.draft
+            document.content_md = document.content_md
             document.review_json = review.model_dump_json()
             document.status = review.status
             db.commit()
@@ -154,6 +158,34 @@ async def review_document(
     document.review_json = result.review.model_dump_json()
     document.status = result.status
     document.iteration_count += result.iteration_count
+    db.commit()
+    db.refresh(document)
+    return document_view(document)
+
+
+@router.post("/{document_id}/approve", response_model=DocumentView)
+async def approve_document(
+    document_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> DocumentView:
+    document = owned_document(document_id, user, db)
+    from ..llm import ProviderError
+    
+    request = GenerateRequest(
+        title=document.title,
+        input_text=document.source_notes,
+        template=document.template,
+        provider=document.provider,
+        model=document.model,
+    )
+    orchestrator = DocumentOrchestrator(request, thread_id=document.id)
+    try:
+        result = await orchestrator.resume()
+    except ProviderError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+        
+    document.status = "approved"
     db.commit()
     db.refresh(document)
     return document_view(document)

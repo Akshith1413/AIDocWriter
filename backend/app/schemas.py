@@ -5,7 +5,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 
 TemplateName = Literal["prd", "compliance", "contract", "consulting"]
-ProviderName = Literal["demo", "openai", "anthropic", "groq", "groq-8b", "groq-gemma"]
+ProviderName = Literal["demo", "openai", "anthropic", "groq", "groq-8b", "groq-gemma", "xai"]
 
 
 class SignupRequest(BaseModel):

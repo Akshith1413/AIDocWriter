@@ -55,8 +55,8 @@ def test_health_and_public_configuration() -> None:
         assert providers[0]["id"] == "demo"
         assert providers[0]["configured"] is True
         assert len(client.get("/api/public/templates").json()) == 4
-        orchestration = DocumentOrchestrator(GenerateRequest(**sample_request(provider="xai", model=None)))
-        assert orchestration.client.selection.model == "grok-4.3"
+        orchestration = DocumentOrchestrator(GenerateRequest(**sample_request(provider="openai", model=None)))
+        assert orchestration.client.selection.model == "gpt-4o"
 
 
 def test_authenticated_generation_edit_review_and_dashboard() -> None:

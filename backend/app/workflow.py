@@ -1,6 +1,9 @@
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
+from langgraph.checkpoint.memory import MemorySaver
+
+memory = MemorySaver()
 
 from .config import get_settings
 from .llm import AgentLLM, ModelSelection
@@ -29,7 +32,7 @@ def inferred_title(request: GenerateRequest) -> str:
 
 
 class DocumentOrchestrator:
-    def __init__(self, request: GenerateRequest) -> None:
+    def __init__(self, request: GenerateRequest, thread_id: str = "default") -> None:
         self.request = request
         settings = get_settings()
         defaults = {
@@ -40,8 +43,10 @@ class DocumentOrchestrator:
             "groq-8b": "llama-3.1-8b-instant",
             "groq-gemma": "gemma2-9b-it",
         }
-        model = request.model or defaults[request.provider]
+        model = request.model or defaults.get(request.provider, "studio-demo")
         self.client = AgentLLM(ModelSelection(request.provider, model))
+        self.thread_id = thread_id
+        self.config = {"configurable": {"thread_id": self.thread_id}}
         self.graph = self._compile_graph(start_with_review=False)
         self.review_graph = self._compile_graph(start_with_review=True)
 
@@ -56,7 +61,7 @@ class DocumentOrchestrator:
             "critic", self._route_after_review, {"revise": "writer", "finish": "finalize"}
         )
         graph.add_edge("finalize", END)
-        return graph.compile()
+        return graph.compile(checkpointer=memory, interrupt_before=["finalize"])
 
     async def _writer(self, state: WorkflowState) -> WorkflowState:
         iteration = state.get("iterations", 0) + 1
@@ -85,8 +90,9 @@ class DocumentOrchestrator:
 
     @staticmethod
     def _route_after_review(state: WorkflowState) -> str:
+        score = state["review"].score if state.get("review") else 100
         if (
-            state["review"].status == "revision_required"
+            (state["review"].status == "revision_required" or score < 70)
             and state.get("iterations", 0) < state["max_iterations"]
         ):
             return "revise"
@@ -110,14 +116,18 @@ class DocumentOrchestrator:
         }
 
     async def generate(self) -> GenerationResult:
-        state = await self.graph.ainvoke(self.initial_state())
+        state = await self.graph.ainvoke(self.initial_state(), self.config)
         return self._result(state)
 
     async def review_existing(self, title: str, draft: str) -> GenerationResult:
         state = self.initial_state()
         state.update({"title": title, "draft": draft, "stages": ["Edited draft submitted to Critic"]})
-        result = await self.review_graph.ainvoke(state)
+        result = await self.review_graph.ainvoke(state, self.config)
         return self._result(result)
+
+    async def resume(self) -> GenerationResult:
+        state = await self.graph.ainvoke(None, self.config)
+        return self._result(state)
 
     def _result(self, state: WorkflowState) -> GenerationResult:
         return GenerationResult(
